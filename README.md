@@ -1,28 +1,9 @@
 
-# LilyGoTDisplayS3-FactoryReset
+# LilyGo T-Display S3
 
-Plug device in while holding the `BOOT` button
-
-Launch `flash_download_tool.exe`
-
-    ChipType: ESP32-S3
-    WorkMode: Develop
-    LoadMode: USB
-
-Click the first checkbox
-
-Point to the downloaded `firmware_no_touch.bin` firmware
-
-Enter `0` on the second text box
-
-    SPI SPEED:   80MHz
-    SPI MODE:    QIO
-    DoNotChgBin: Enabled
-    BAUD:        921600
 ## Authors
 
 [@upioneer](https://www.github.com/upioneer)
-
 
 ## References
 
