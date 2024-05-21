@@ -1,8 +1,6 @@
 
 # LilyGo T-Display S3
 
-## 
-
 ![T-Display-S3 ESP32-S3 LCD schematics](https://www.lilygo.cc/cdn/shop/products/Lilygo-T-display_13.jpg?v=1657873834&width=600)
 ![T-Display-S3 ESP32-S3 LCD](https://www.lilygo.cc/cdn/shop/products/Lilygo-T-display_5.jpg?v=1657873834&width=600)
 
