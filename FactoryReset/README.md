@@ -1,5 +1,5 @@
 
-# LilyGoTDisplayS3-FactoryReset
+# LilyGo T-Display S3 - Factory Reset
 
 Plug device in while holding the `BOOT` button
 
