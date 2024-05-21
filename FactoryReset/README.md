@@ -9,6 +9,8 @@ Launch `flash_download_tool.exe`
     WorkMode: Develop
     LoadMode: USB
 
+![illustration1](assets/illustration1.png)
+
 Click the first checkbox
 
 Point to the downloaded `firmware_no_touch.bin` firmware
@@ -19,7 +21,10 @@ Enter `0` on the second text box
     SPI MODE:    QIO
     DoNotChgBin: Enabled
     BAUD:        921600
-## Images
+
+![illustration2](assets/illustration2.png)
+
+## Pinout
 
 ![T-Display-S3 ESP32-S3 LCD schematics](https://www.lilygo.cc/cdn/shop/products/Lilygo-T-display_13.jpg?v=1657873834&width=600)
 
