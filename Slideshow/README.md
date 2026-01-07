@@ -31,7 +31,7 @@ Images rotate every few seconds automatically but can also be paused or manually
 - **Dimensions:** 170 x 320 pixels
 - **Format:** Baseline jpeg (progressive jpegs may fail to decode)
 - **Filenames:** Avoid special characters. Keep names under 31 characters for LittleFS compatibility
-- **Placement:** Add your prepared jpgs to the \data folder
+- **Placement:** Add your prepared jpgs to the `/data` folder
 - **Filesystem:** Uses LittleFS. Total storage is expanded to ~10MB via the custom partition table
 - **Limit:** Currently set to index up to 50 images in the root directory
 
