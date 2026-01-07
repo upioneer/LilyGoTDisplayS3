@@ -12,8 +12,8 @@ Rotating thru the images is done thru a button press
 - **Prepare Images:** Place your `.jpg`/`.jpeg` files in the `/data` folder
 - **Platform > Build the Filesystem:** Run `Build Filesystem Image` in PlatformIO
 - **Platform > Flash Filesystem:** Run `Upload Filesystem Image` in PlatformIO
-- **PlatformIO: Build** (✅ check icon in status bar)
-- **PlatformIO: Upload** (➡️ arrow iconc in status bar)
+- **PlatformIO: Build** (check icon in status bar)
+- **PlatformIO: Upload** (arrow icon in status bar)
 
 ## Hardware Configuration
 - **Device:** LilyGo T-Display S3 (non-touch)
@@ -22,14 +22,18 @@ Rotating thru the images is done thru a button press
 
 ## How to Use
 - **Button 14 (Right):** Short press for the next image
-- **Button 14 (Right):** Long press for a storage report in the serial terminal
+- **Button 14 (Right):** Long press (2s) for a storage report in the serial terminal
+- **Button 0 (Left):** Short press to toggle Auto-Play (Slideshow) / Manual Pause
+- **Button 0 (Left):** Long press (2s) to shuffle the image playback order
 - **Serial Monitor:** Set to `115200` baud to see file discovery and partition health
 
 ## Image Requirements & Caveats
 - **Dimensions:** 170 x 320 pixels
 - **Format:** Baseline JPEG (progressive jpegs may fail to decode)
+- **Filenames:** Avoid special characters. Keep names under 31 characters for LittleFS compatibility
+- **System Files:** Do not delete the `.sys` folder
 - **Filesystem:** Uses LittleFS. Total storage is expanded to ~10MB via the custom partition table
-- **Limit:** Currently set to index up to 50 images
+- **Limit:** Currently set to index up to 50 images in the root directory
 
 ## Libraries Used
 - [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI) - Display driver
