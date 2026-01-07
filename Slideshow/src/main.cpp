@@ -18,6 +18,7 @@ unsigned long lastSlideTime = 0;
 const unsigned long slideInterval = 5000;
 unsigned long nextBtnTimestamp = 0;
 unsigned long playBtnTimestamp = 0;
+bool playBtnProcessed = false;
 
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
     if (y >= tft.height()) return false;
@@ -42,9 +43,9 @@ void scanFilesystem() {
     File root = LittleFS.open("/");
     File file = root.openNextFile();
     while (file && totalImages < 50) {
+        String name = "/" + String(file.name());
+        String lower = name; lower.toLowerCase();
         if (!file.isDirectory()) {
-            String name = "/" + String(file.name());
-            String lower = name; lower.toLowerCase();
             if ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && 
                 lower.indexOf("/.sys/") == -1) {
                 imageFiles[totalImages++] = name;
@@ -58,14 +59,12 @@ void shuffleImages() {
     tft.setSwapBytes(true);
     TJpgDec.drawFsJpg(0, 0, "/.sys/shuffle.jpg", LittleFS);
     Serial.println("STATE: SHUFFLING");
-    
     for (int i = totalImages - 1; i > 0; i--) {
         int j = random(0, i + 1);
         String temp = imageFiles[i];
         imageFiles[i] = imageFiles[j];
         imageFiles[j] = temp;
     }
-    
     currentIndex = 0;
     delay(1500);
 }
@@ -100,19 +99,15 @@ void setup() {
     digitalWrite(PIN_LCD_BL, HIGH);
     pinMode(PIN_BUTTON_NEXT, INPUT_PULLUP);
     pinMode(PIN_BUTTON_PLAY, INPUT_PULLUP);
-
     Serial.begin(115200);
     LittleFS.begin(true);
-
     tft.begin();
     tft.setRotation(0);
     tft.setSwapBytes(true);
-    
     randomSeed(analogRead(0));
     scanFilesystem();
     TJpgDec.setCallback(tft_output);
     TJpgDec.setJpgScale(1);
-    
     displayImage();
 }
 
@@ -132,16 +127,22 @@ void loop() {
     lastNextState = currentNext;
 
     bool currentPlay = digitalRead(PIN_BUTTON_PLAY);
-    if (currentPlay == LOW && lastPlayState == HIGH) {
-        playBtnTimestamp = millis();
-    }
-    if (currentPlay == HIGH && lastPlayState == LOW) {
-        unsigned long dur = millis() - playBtnTimestamp;
-        if (dur > 2000) {
+    if (currentPlay == LOW) {
+        if (lastPlayState == HIGH) {
+            playBtnTimestamp = millis();
+            playBtnProcessed = false;
+        }
+        if (!playBtnProcessed && (millis() - playBtnTimestamp > 2000)) {
             shuffleImages();
             displayImage();
+            playBtnProcessed = true; 
         }
-        else if (dur > 50) togglePlayPause();
+    }
+    if (currentPlay == HIGH && lastPlayState == LOW) {
+        if (!playBtnProcessed) {
+            unsigned long dur = millis() - playBtnTimestamp;
+            if (dur > 50) togglePlayPause();
+        }
     }
     lastPlayState = currentPlay;
 
