@@ -3,146 +3,149 @@
 #include <LittleFS.h>
 #include <TJpg_Decoder.h>
 
-// Hardware Pin Definitions for LilyGo T-Display S3
 #define PIN_POWER_ON 15
 #define PIN_LCD_BL   38
-#define PIN_BUTTON_1 14 
+#define PIN_BUTTON_NEXT 14 
+#define PIN_BUTTON_PLAY 0
 
 TFT_eSPI tft = TFT_eSPI();
-
-// Playlist configuration
 String imageFiles[50];
 int totalImages = 0;
 int currentIndex = 0;
 
-// Variables for Long-Press detection
-unsigned long buttonPressTimestamp = 0;
-bool isButtonPressed = false;
+bool isPaused = false; 
+unsigned long lastSlideTime = 0;
+const unsigned long slideInterval = 5000;
+unsigned long nextBtnTimestamp = 0;
+unsigned long playBtnTimestamp = 0;
 
-// Render callback for TJpg_Decoder
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
     if (y >= tft.height()) return false;
     tft.pushImage(x, y, w, h, bitmap);
     return true;
 }
 
-// Reports storage stats to Serial Monitor
 void reportStorage() {
     Serial.println("\n===============================");
     Serial.println("   MANUAL STORAGE REPORT");
     Serial.println("===============================");
-    
     size_t total = LittleFS.totalBytes();
     size_t used = LittleFS.usedBytes();
-    
     Serial.printf("PARTITION SIZE: %d KB\n", total / 1024);
     Serial.printf("SPACE USED:     %d KB\n", used / 1024);
     Serial.printf("SPACE FREE:     %d KB\n", (total - used) / 1024);
     Serial.println("===============================\n");
 }
 
-// Scans LittleFS for image files
 void scanFilesystem() {
-    Serial.println("Scanning filesystem for images...");
+    totalImages = 0;
     File root = LittleFS.open("/");
-    if (!root) {
-        Serial.println("CRITICAL ERROR: Could not open root directory.");
-        return;
-    }
-
     File file = root.openNextFile();
     while (file && totalImages < 50) {
-        String name = "/" + String(file.name());
-        String lowerName = name;
-        lowerName.toLowerCase();
-        
-        if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) {
-            imageFiles[totalImages] = name;
-            Serial.printf("FOUND: %s (%d bytes)\n", name.c_str(), file.size());
-            totalImages++;
+        if (!file.isDirectory()) {
+            String name = "/" + String(file.name());
+            String lower = name; lower.toLowerCase();
+            if ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && 
+                lower.indexOf("/.sys/") == -1) {
+                imageFiles[totalImages++] = name;
+            }
         }
         file = root.openNextFile();
     }
 }
 
-void displayNextImage() {
-    if (totalImages == 0) {
-        tft.fillScreen(TFT_ORANGE);
-        tft.drawString("DISK EMPTY", tft.width()/2, tft.height()/2);
-        return;
+void shuffleImages() {
+    tft.setSwapBytes(true);
+    TJpgDec.drawFsJpg(0, 0, "/.sys/shuffle.jpg", LittleFS);
+    Serial.println("STATE: SHUFFLING");
+    
+    for (int i = totalImages - 1; i > 0; i--) {
+        int j = random(0, i + 1);
+        String temp = imageFiles[i];
+        imageFiles[i] = imageFiles[j];
+        imageFiles[j] = temp;
     }
     
-    String target = imageFiles[currentIndex];
-    Serial.printf("ACTION: Drawing %s\n", target.c_str());
-    
+    currentIndex = 0;
+    delay(1500);
+}
+
+void displayImage() {
+    if (totalImages == 0) return;
+    tft.setSwapBytes(true);
     tft.fillScreen(TFT_BLACK);
-    TJpgDec.drawFsJpg(0, 0, target.c_str(), LittleFS);
-    
+    TJpgDec.drawFsJpg(0, 0, imageFiles[currentIndex].c_str(), LittleFS);
     currentIndex = (currentIndex + 1) % totalImages;
+    lastSlideTime = millis();
+}
+
+void togglePlayPause() {
+    isPaused = !isPaused;
+    tft.setSwapBytes(true);
+    if (isPaused) {
+        Serial.println("STATE: PAUSED");
+        TJpgDec.drawFsJpg(0, 0, "/.sys/pause.jpg", LittleFS);
+    } else {
+        Serial.println("STATE: PLAYING");
+        TJpgDec.drawFsJpg(0, 0, "/.sys/play.jpg", LittleFS);
+    }
+    delay(1500); 
+    displayImage();
 }
 
 void setup() {
-    // Hardware Power
     pinMode(PIN_POWER_ON, OUTPUT);
     digitalWrite(PIN_POWER_ON, HIGH);
     pinMode(PIN_LCD_BL, OUTPUT);
     digitalWrite(PIN_LCD_BL, HIGH);
-    pinMode(PIN_BUTTON_1, INPUT_PULLUP);
+    pinMode(PIN_BUTTON_NEXT, INPUT_PULLUP);
+    pinMode(PIN_BUTTON_PLAY, INPUT_PULLUP);
 
     Serial.begin(115200);
+    LittleFS.begin(true);
 
-    // Mount Filesystem (true = auto-format if partition table changed)
-    if (!LittleFS.begin(true)) {
-        Serial.println("CRITICAL: LittleFS Mount Failed");
-        return;
-    }
-
-    // Initialize Display
     tft.begin();
+    tft.setRotation(0);
     tft.setSwapBytes(true);
-    tft.setRotation(0); 
-    tft.fillScreen(TFT_BLUE); 
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_WHITE);
-    delay(300);
-
-    // Build image list
+    
+    randomSeed(analogRead(0));
     scanFilesystem();
-
-    // Decoder Setup
     TJpgDec.setCallback(tft_output);
     TJpgDec.setJpgScale(1);
-
-    // Initial Image
-    displayNextImage();
     
-    Serial.println("Setup Complete. Short press for next image, Long press for storage info.");
+    displayImage();
 }
 
 void loop() {
-    static bool lastState = HIGH;
-    bool currentState = digitalRead(PIN_BUTTON_1);
+    static bool lastNextState = HIGH;
+    static bool lastPlayState = HIGH;
 
-    // Button Pressed Down
-    if (currentState == LOW && lastState == HIGH) {
-        buttonPressTimestamp = millis();
-        isButtonPressed = true;
-        delay(50); // Small debounce
+    bool currentNext = digitalRead(PIN_BUTTON_NEXT);
+    if (currentNext == LOW && lastNextState == HIGH) {
+        nextBtnTimestamp = millis();
     }
+    if (currentNext == HIGH && lastNextState == LOW) {
+        unsigned long dur = millis() - nextBtnTimestamp;
+        if (dur > 2000) reportStorage();
+        else if (dur > 50) displayImage();
+    }
+    lastNextState = currentNext;
 
-    // Button Released
-    if (currentState == HIGH && lastState == LOW) {
-        unsigned long pressDuration = millis() - buttonPressTimestamp;
-        
-        if (pressDuration > 2000) {
-            // It was a long press (2+ seconds)
-            reportStorage();
-        } else if (pressDuration > 50) {
-            // It was a normal click
-            displayNextImage();
+    bool currentPlay = digitalRead(PIN_BUTTON_PLAY);
+    if (currentPlay == LOW && lastPlayState == HIGH) {
+        playBtnTimestamp = millis();
+    }
+    if (currentPlay == HIGH && lastPlayState == LOW) {
+        unsigned long dur = millis() - playBtnTimestamp;
+        if (dur > 2000) {
+            shuffleImages();
+            displayImage();
         }
-        isButtonPressed = false;
+        else if (dur > 50) togglePlayPause();
     }
+    lastPlayState = currentPlay;
 
-    lastState = currentState;
+    if (!isPaused && (millis() - lastSlideTime > slideInterval)) {
+        displayImage();
+    }
 }
