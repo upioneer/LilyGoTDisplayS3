@@ -40,19 +40,30 @@ void reportStorage() {
 
 void scanFilesystem() {
     totalImages = 0;
+    
+    // Explicitly check for the protected QR first to ensure it is always included
+    if (LittleFS.exists("/.sys/qr.jpg")) {
+        imageFiles[totalImages++] = "/.sys/qr.jpg";
+        Serial.println("System: Protected QR loaded.");
+    }
+
     File root = LittleFS.open("/");
     File file = root.openNextFile();
     while (file && totalImages < 50) {
-        String name = "/" + String(file.name());
-        String lower = name; lower.toLowerCase();
         if (!file.isDirectory()) {
-            if ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && 
-                lower.indexOf("/.sys/") == -1) {
+            String name = "/" + String(file.name());
+            String lower = name; lower.toLowerCase();
+            
+            bool isJpg = lower.endsWith(".jpg") || lower.endsWith(".jpeg");
+            // Ignore anything that might be in the root called qr.jpg to avoid duplicates 
+            // and ignore the system folder files as they are handled elsewhere
+            if (isJpg && lower != "/qr.jpg" && lower.indexOf("/.sys/") == -1) {
                 imageFiles[totalImages++] = name;
             }
         }
         file = root.openNextFile();
     }
+    Serial.printf("Total Images indexed: %d\n", totalImages);
 }
 
 void shuffleImages() {
