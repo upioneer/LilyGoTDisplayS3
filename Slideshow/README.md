@@ -1,10 +1,10 @@
-# ESP32-S3 Photo Rotator (LilyGo T-Display S3)
+# ESP32-S3 Slideshow
 
-An image viewer for the LilyGo T-Display S3
+An image viewer hard coded for the LilyGo T-Display S3
 
-It auto-discovers images from the internal filesystem (LittleFS)
+It auto discovers images from the internal filesystem (LittleFS)
 
-Rotating thru the images is done thru a button press
+Images rotate every few seconds automatically but can also be paused or manually advanced
 
 ## Quick Start
 - **Install VS Code and the PlatformIO Extension**
@@ -22,16 +22,16 @@ Rotating thru the images is done thru a button press
 
 ## How to Use
 - **Button 14 (Right):** Short press for the next image
-- **Button 14 (Right):** Long press (2s) for a storage report in the serial terminal
-- **Button 0 (Left):** Short press to toggle Auto-Play (Slideshow) / Manual Pause
-- **Button 0 (Left):** Long press (2s) to shuffle the image playback order
+- **Button 14 (Right):** Long press for a storage report in the serial terminal
+- **Button 0 (Left):** Short press to toggle play/pause of the slideshow
+- **Button 0 (Left):** Long press to shuffle the image playback order
 - **Serial Monitor:** Set to `115200` baud to see file discovery and partition health
 
 ## Image Requirements & Caveats
 - **Dimensions:** 170 x 320 pixels
-- **Format:** Baseline JPEG (progressive jpegs may fail to decode)
+- **Format:** Baseline jpeg (progressive jpegs may fail to decode)
 - **Filenames:** Avoid special characters. Keep names under 31 characters for LittleFS compatibility
-- **System Files:** Do not delete the `.sys` folder
+- **Placement:** Add your prepared jpgs to the \data folder
 - **Filesystem:** Uses LittleFS. Total storage is expanded to ~10MB via the custom partition table
 - **Limit:** Currently set to index up to 50 images in the root directory
 
