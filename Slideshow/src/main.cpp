@@ -40,36 +40,27 @@ void reportStorage() {
 
 void scanFilesystem() {
     totalImages = 0;
-    
-    // Explicitly check for the protected QR first to ensure it is always included
     if (LittleFS.exists("/.sys/qr.jpg")) {
         imageFiles[totalImages++] = "/.sys/qr.jpg";
-        Serial.println("System: Protected QR loaded.");
     }
-
     File root = LittleFS.open("/");
     File file = root.openNextFile();
     while (file && totalImages < 50) {
         if (!file.isDirectory()) {
             String name = "/" + String(file.name());
             String lower = name; lower.toLowerCase();
-            
-            bool isJpg = lower.endsWith(".jpg") || lower.endsWith(".jpeg");
-            // Ignore anything that might be in the root called qr.jpg to avoid duplicates 
-            // and ignore the system folder files as they are handled elsewhere
-            if (isJpg && lower != "/qr.jpg" && lower.indexOf("/.sys/") == -1) {
+            if ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && 
+                lower != "/qr.jpg" && lower.indexOf("/.sys/") == -1) {
                 imageFiles[totalImages++] = name;
             }
         }
         file = root.openNextFile();
     }
-    Serial.printf("Total Images indexed: %d\n", totalImages);
 }
 
 void shuffleImages() {
     tft.setSwapBytes(true);
     TJpgDec.drawFsJpg(0, 0, "/.sys/shuffle.jpg", LittleFS);
-    Serial.println("STATE: SHUFFLING");
     for (int i = totalImages - 1; i > 0; i--) {
         int j = random(0, i + 1);
         String temp = imageFiles[i];
@@ -77,15 +68,14 @@ void shuffleImages() {
         imageFiles[j] = temp;
     }
     currentIndex = 0;
-    delay(1500);
+    delay(500); 
 }
 
-void displayImage() {
+void renderCurrent() {
     if (totalImages == 0) return;
     tft.setSwapBytes(true);
     tft.fillScreen(TFT_BLACK);
     TJpgDec.drawFsJpg(0, 0, imageFiles[currentIndex].c_str(), LittleFS);
-    currentIndex = (currentIndex + 1) % totalImages;
     lastSlideTime = millis();
 }
 
@@ -93,14 +83,12 @@ void togglePlayPause() {
     isPaused = !isPaused;
     tft.setSwapBytes(true);
     if (isPaused) {
-        Serial.println("STATE: PAUSED");
         TJpgDec.drawFsJpg(0, 0, "/.sys/pause.jpg", LittleFS);
     } else {
-        Serial.println("STATE: PLAYING");
         TJpgDec.drawFsJpg(0, 0, "/.sys/play.jpg", LittleFS);
     }
-    delay(1500); 
-    displayImage();
+    delay(500); 
+    renderCurrent();
 }
 
 void setup() {
@@ -110,16 +98,25 @@ void setup() {
     digitalWrite(PIN_LCD_BL, HIGH);
     pinMode(PIN_BUTTON_NEXT, INPUT_PULLUP);
     pinMode(PIN_BUTTON_PLAY, INPUT_PULLUP);
+    
     Serial.begin(115200);
     LittleFS.begin(true);
+    
     tft.begin();
     tft.setRotation(0);
     tft.setSwapBytes(true);
-    randomSeed(analogRead(0));
-    scanFilesystem();
+    
     TJpgDec.setCallback(tft_output);
     TJpgDec.setJpgScale(1);
-    displayImage();
+
+    if (LittleFS.exists("/.sys/splash.jpg")) {
+        TJpgDec.drawFsJpg(0, 0, "/.sys/splash.jpg", LittleFS);
+        delay(5000); // Extended to 5s
+    }
+
+    randomSeed(analogRead(0));
+    scanFilesystem();
+    renderCurrent();
 }
 
 void loop() {
@@ -133,7 +130,10 @@ void loop() {
     if (currentNext == HIGH && lastNextState == LOW) {
         unsigned long dur = millis() - nextBtnTimestamp;
         if (dur > 2000) reportStorage();
-        else if (dur > 50) displayImage();
+        else if (dur > 50) {
+            currentIndex = (currentIndex + 1) % totalImages;
+            renderCurrent();
+        }
     }
     lastNextState = currentNext;
 
@@ -145,7 +145,7 @@ void loop() {
         }
         if (!playBtnProcessed && (millis() - playBtnTimestamp > 2000)) {
             shuffleImages();
-            displayImage();
+            renderCurrent();
             playBtnProcessed = true; 
         }
     }
@@ -158,6 +158,7 @@ void loop() {
     lastPlayState = currentPlay;
 
     if (!isPaused && (millis() - lastSlideTime > slideInterval)) {
-        displayImage();
+        currentIndex = (currentIndex + 1) % totalImages;
+        renderCurrent();
     }
 }
